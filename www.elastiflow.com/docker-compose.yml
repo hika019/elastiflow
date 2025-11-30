@@ -19,19 +19,13 @@ version: '3'
 
 services:
   elastiflow-elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.1
+    image: elastic/elasticsearch:9.2.1
     container_name: elastiflow-elasticsearch
+    ports:
+      - 9200:9200
+      - 9300:9300
     restart: 'no'
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 131072
-        hard: 131072
-      nproc: 8192
-      fsize: -1
-    network_mode: host
+
     volumes:
       # You will need to create the path and permissions on the local file system where Elasticsearch will store data.
       # For example...
@@ -41,34 +35,32 @@ services:
       # JVM Heap size
       #   - this should be at least 2GB for simple testing, receiving only a few flows per second.
       #   - for production environments upto 31GB is recommended.
-      ES_JAVA_OPTS: '-Xms4g -Xmx4g'
 
       cluster.name: elastiflow
-
-      bootstrap.memory_lock: 'true'
-
-      network.host: 0.0.0.0
-      http.port: 9200
       discovery.type: 'single-node'
 
-      indices.query.bool.max_clause_count: 8192
-      search.max_buckets: 250000
+      ES_JAVA_OPTS: '-XX:UseSVE=0'
+      CLI_JAVA_OPTS: '-XX:UseSVE=0'
+
+      ELASTIC_PASSWORD: test
+      xpack.security.enabled: false
 
       action.destructive_requires_name: 'true'
 
   elastiflow-kibana:
-    image: docker.elastic.co/kibana/kibana:7.8.1
+    image: elastic/kibana:9.2.1
     container_name: elastiflow-kibana
+    ports:
+      - 5601:5601
     restart: 'no'
     depends_on:
       - elastiflow-elasticsearch
-    network_mode: host
+
     environment:
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 5601
       SERVER_MAXPAYLOADBYTES: 8388608
-
-      ELASTICSEARCH_HOSTS: "http://127.0.0.1:9200"
+      ELASTICSEARCH_HOSTS: "http://elastiflow-elasticsearch:9200"
       ELASTICSEARCH_REQUESTTIMEOUT: 132000
       ELASTICSEARCH_SHARDTIMEOUT: 120000
 
@@ -80,12 +72,17 @@ services:
       LOGGING_QUIET: 'false'
 
   elastiflow-logstash:
-    image: robcowart/elastiflow-logstash:4.0.1
+    build:
+      context: ./
+      dockerfile: Dockerfile
     container_name: elastiflow-logstash
+    ports:
+      - 2055:2055/udp
+      - 6343:6343/udp
+      - 4739:4739/udp
     restart: 'no'
     depends_on:
       - elastiflow-elasticsearch
-    network_mode: host
     environment:
       # JVM Heap size - this MUST be at least 3GB (4GB preferred)
       LS_JAVA_OPTS: '-Xms4g -Xmx4g'
@@ -108,7 +105,7 @@ services:
       ELASTIFLOW_DNS_FAILED_CACHE_SIZE: 75000
       ELASTIFLOW_DNS_FAILED_CACHE_TTL: 3600
 
-      ELASTIFLOW_ES_HOST: '127.0.0.1:9200'
+      ELASTIFLOW_ES_HOST: 'elastiflow-elasticsearch:9200'
       #ELASTIFLOW_ES_USER: 'elastic'
       #ELASTIFLOW_ES_PASSWD: 'changeme'
 

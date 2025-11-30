@@ -15,19 +15,20 @@
 # Robert Cowart are Copyright (C)2020 Robert Cowart. All Rights Reserved.
 #------------------------------------------------------------------------------
 
-FROM docker.elastic.co/logstash/logstash:7.8.1
+FROM elastic/logstash:9.2.1
 
 ARG BUILD_DATE
+ARG VERSION="9.2.1"
 
 LABEL org.opencontainers.image.created="$BUILD_DATE" \
       org.opencontainers.image.authors="elastiflow@gmail.com" \
       org.opencontainers.image.url="https://github.com/robcowart/elastiflow/README.md" \
       org.opencontainers.image.documentation="https://github.com/robcowart/elastiflow/DOCKER.md" \
       org.opencontainers.image.source="https://github.com/robcowart/elastiflow" \
-      org.opencontainers.image.version="4.0.1" \
+      org.opencontainers.image.version="$VERSION" \
       org.opencontainers.image.vendor="Robert Cowart" \
       org.opencontainers.image.title="ElastiFlow™ - Logstash" \
-      org.opencontainers.image.description="Logstash with the ElastiFlow™ pipeline."
+      org.opencontainers.image.description="ElastiFlow 4.x upgraded to Elastic Stack 9.2.1 - Personal/Non-commercial use only"
 
 ENV ELASTIFLOW_ES_HOST="http://127.0.0.1:9200"
 
