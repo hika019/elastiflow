@@ -15,6 +15,11 @@
 # Robert Cowart are Copyright (C)2020 Robert Cowart. All Rights Reserved.
 #------------------------------------------------------------------------------
 
+FROM alpine:latest AS stage0
+
+RUN wget https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-City.mmdb -O /usr/share/GeoLite2-City.mmdb && \
+    wget https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-ASN.mmdb -O /usr/share/GeoLite2-ASN.mmdb
+
 FROM elastic/logstash:9.2.1
 
 ARG BUILD_DATE
@@ -38,6 +43,9 @@ RUN $HOME/bin/logstash-plugin install logstash-codec-sflow \
 WORKDIR /usr/share/logstash/config
 COPY --chown=logstash:logstash ./docker_assets/logstash.yml ./
 COPY --chown=logstash:logstash ./docker_assets/pipelines.yml ./
+
+COPY --from=stage0 /usr/share/GeoLite2-City.mmdb /etc/logstash/elastiflow/geoipdbs/GeoLite2-City.mmdb
+COPY --from=stage0 /usr/share/GeoLite2-ASN.mmdb /etc/logstash/elastiflow/geoipdbs/GeoLite2-ASN.mmdb
 
 WORKDIR /etc/logstash/elastiflow
 COPY --chown=logstash:root ./logstash/elastiflow/ ./
