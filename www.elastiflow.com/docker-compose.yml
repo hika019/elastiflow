@@ -21,9 +21,6 @@ services:
   elastiflow-elasticsearch:
     image: elastic/elasticsearch:9.2.1
     container_name: elastiflow-elasticsearch
-    ports:
-      - 9200:9200
-      - 9300:9300
     restart: 'no'
 
     volumes:
@@ -85,7 +82,7 @@ services:
       - elastiflow-elasticsearch
     environment:
       # JVM Heap size - this MUST be at least 3GB (4GB preferred)
-      LS_JAVA_OPTS: '-Xms4g -Xmx4g'
+      LS_JAVA_OPTS: '-Xms512m -Xmx2g'
 
       # ElastiFlow global configuration
       ELASTIFLOW_AGENT_ID: elastiflow
