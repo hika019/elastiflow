@@ -36,9 +36,6 @@ services:
       cluster.name: elastiflow
       discovery.type: 'single-node'
 
-      ES_JAVA_OPTS: '-XX:UseSVE=0'
-      CLI_JAVA_OPTS: '-XX:UseSVE=0'
-
       ELASTIC_PASSWORD: test
       xpack.security.enabled: false
 
