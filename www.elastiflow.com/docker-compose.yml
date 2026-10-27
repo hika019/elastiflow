@@ -23,11 +23,16 @@ services:
     container_name: elastiflow-elasticsearch
     restart: 'unless-stopped'
 
-    volumes:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+    # volumes:
       # You will need to create the path and permissions on the local file system where Elasticsearch will store data.
       # For example...
       #   mkdir /var/lib/elastiflow_es && chown -R 1000:1000 /var/lib/elastiflow_es
-      - /var/lib/elastiflow_es:/usr/share/elasticsearch/data
+      # - /var/lib/elastiflow_es:/usr/share/elasticsearch/data
     environment:
       # JVM Heap size
       #   - this should be at least 2GB for simple testing, receiving only a few flows per second.
@@ -41,6 +46,28 @@ services:
 
       action.destructive_requires_name: 'true'
 
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health > /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  es-init:
+    image: curlimages/curl:latest
+    depends_on:
+      elastiflow-elasticsearch:
+        condition: service_healthy
+    environment:
+      ES_URL: http://elastiflow-elasticsearch:9200
+    volumes:
+      - ./elasticsearch-init:/config:ro
+    entrypoint:
+      - /bin/sh
+      - /config/init.sh
+    restart: "no"
+
+
   elastiflow-kibana:
     image: elastic/kibana:9.2.1
     container_name: elastiflow-kibana
@@ -48,7 +75,8 @@ services:
       - 5601:5601
     restart: 'unless-stopped'
     depends_on:
-      - elastiflow-elasticsearch
+      es-init:
+        condition: service_completed_successfully
 
     environment:
       SERVER_HOST: 0.0.0.0
@@ -65,6 +93,18 @@ services:
       LOGGING_DEST: stdout
       LOGGING_QUIET: 'false'
 
+  kibana-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - elastiflow-kibana
+    volumes:
+      - ./kibana-init:/config:ro
+    entrypoint:
+      - /bin/sh
+      - /config/init.sh
+    restart: "no"
+
+
   elastiflow-logstash:
     build:
       context: ./
@@ -76,7 +116,8 @@ services:
       - 4739:4739/udp
     restart: 'unless-stopped'
     depends_on:
-      - elastiflow-elasticsearch
+      es-init:
+        condition: service_completed_successfully
     environment:
       # JVM Heap size - this MUST be at least 3GB (4GB preferred)
       LS_JAVA_OPTS: '-Xms512m -Xmx2g'

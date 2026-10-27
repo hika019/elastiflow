@@ -1,0 +1,29 @@
+# docker-compose の kibana-init 相当 (ダッシュボードの import)。init.sh 側で Kibana の起動を待つ。
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elastiflow-kibana-init
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 1200
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kibana-init
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - /config/init.sh
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: kibana-init

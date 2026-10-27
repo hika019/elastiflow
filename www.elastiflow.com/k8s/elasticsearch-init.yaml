@@ -1,0 +1,39 @@
+# docker-compose の es-init 相当。
+# Sync フックとして毎回作り直し、Elasticsearch (wave 0) の後、Kibana / Logstash (wave 2) の前に流す。
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elastiflow-elasticsearch-init
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: es-init
+          image: curlimages/curl:latest
+          env:
+            - name: ES_URL
+              value: http://elastiflow-elasticsearch:9200
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until curl -fsS "$ES_URL/_cluster/health?wait_for_status=yellow&timeout=5s" > /dev/null; do
+                echo "Waiting for Elasticsearch..."
+                sleep 5
+              done
+              exec /bin/sh /config/init.sh
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: elasticsearch-init

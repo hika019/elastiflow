@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elastiflow
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hika019/elastiflow.git
+    targetRevision: master
+    path: www.elastiflow.com
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elastiflow
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # ConfigMap (index-template.json / dashboards.ndjson) が大きく、
+      # client-side apply だと last-applied-configuration 注釈の上限を超えるため
+      - ServerSideApply=true

@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: elastiflow
+
+resources:
+  - k8s/namespace.yaml
+  - k8s/elasticsearch.yaml
+  - k8s/elasticsearch-init.yaml
+  - k8s/kibana.yaml
+  - k8s/kibana-init.yaml
+  - k8s/logstash.yaml
+
+# index-template.json / dashboards.ndjson はそれぞれ 1MB 弱あるため、
+# Argo CD 側は ServerSideApply=true で同期すること (last-applied 注釈の 256KB 制限回避)
+configMapGenerator:
+  - name: elasticsearch-init
+    files:
+      - elasticsearch-init/init.sh
+      - elasticsearch-init/ilm-policy.json
+      - elasticsearch-init/geoip-pipeline.json
+      - elasticsearch-init/index-template.json
+  - name: kibana-init
+    files:
+      - kibana-init/init.sh
+      - kibana-init/dashboards.ndjson

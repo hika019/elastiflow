@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elastiflow-elasticsearch-data
+  labels:
+    app.kubernetes.io/name: elastiflow-elasticsearch
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastiflow-elasticsearch
+  labels:
+    app.kubernetes.io/name: elastiflow-elasticsearch
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: elastiflow-elasticsearch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: elastiflow-elasticsearch
+    spec:
+      securityContext:
+        # elasticsearch ユーザー (uid/gid 1000) がデータディレクトリに書けるように
+        fsGroup: 1000
+      containers:
+        - name: elastiflow-elasticsearch
+          image: elastic/elasticsearch:9.2.1
+          env:
+            - name: cluster.name
+              value: elastiflow
+            - name: discovery.type
+              value: single-node
+            - name: ELASTIC_PASSWORD
+              value: test
+            - name: xpack.security.enabled
+              value: "false"
+            - name: action.destructive_requires_name
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+          resources:
+            limits:
+              memory: 4Gi
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?wait_for_status=yellow&timeout=1s
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: elastiflow-elasticsearch-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastiflow-elasticsearch
+  labels:
+    app.kubernetes.io/name: elastiflow-elasticsearch
+spec:
+  selector:
+    app.kubernetes.io/name: elastiflow-elasticsearch
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+      protocol: TCP
