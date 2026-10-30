@@ -1,6 +1,6 @@
-# 外部ルーターからの NetFlow / sFlow / IPFIX を <NodeIP>:2055,6343,4739/udp で直接受ける。
-# hostNetwork にしているのは、NodePort/Service 経由だと送信元 IP が SNAT されてエクスポーターの
-# 判別ができなくなるのと、UDP の conntrack が古い宛先に張り付く問題を避けるため。
+# 外部ルーターからの NetFlow / sFlow / IPFIX を NodePort (<NodeIP>:32055,32343,32739/udp) で受ける。
+# externalTrafficPolicy: Local にしているのは、SNAT で送信元 IP が書き換わりエクスポーターの
+# 判別ができなくなるのを避けるため。この場合 Logstash の Pod が動いているノード宛てにしか届かないので、
 # マルチノードの場合はルーターの送信先ノードを固定するため nodeSelector を設定すること。
 apiVersion: apps/v1
 kind: Deployment
@@ -12,9 +12,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 1
-  # 同一ノードで新旧 Pod がホストポートを取り合わないように
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: elastiflow-logstash
@@ -23,9 +20,6 @@ spec:
       labels:
         app.kubernetes.io/name: elastiflow-logstash
     spec:
-      hostNetwork: true
-      # hostNetwork でも elastiflow-elasticsearch を cluster DNS で引けるように
-      dnsPolicy: ClusterFirstWithHostNet
       # nodeSelector:
       #   kubernetes.io/hostname: <flow を受けるノード名>
       containers:
@@ -108,3 +102,33 @@ spec:
             - name: ipfix
               containerPort: 4739
               protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastiflow-logstash
+  labels:
+    app.kubernetes.io/name: elastiflow-logstash
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/name: elastiflow-logstash
+  ports:
+    - name: netflow
+      port: 2055
+      targetPort: netflow
+      nodePort: 32055
+      protocol: UDP
+    - name: sflow
+      port: 6343
+      targetPort: sflow
+      nodePort: 32343
+      protocol: UDP
+    - name: ipfix
+      port: 4739
+      targetPort: ipfix
+      nodePort: 32739
+      protocol: UDP

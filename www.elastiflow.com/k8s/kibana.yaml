@@ -64,10 +64,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
+  # 外部から http://<NodeIP>:30601 でアクセスする (5601 は NodePort の範囲外のため)
+  type: NodePort
   selector:
     app.kubernetes.io/name: elastiflow-kibana
   ports:
     - name: http
       port: 5601
       targetPort: http
+      nodePort: 30601
       protocol: TCP
