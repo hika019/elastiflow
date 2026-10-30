@@ -1,0 +1,55 @@
+name: logstash-image
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - www.elastiflow.com/Dockerfile
+      - www.elastiflow.com/docker_assets/**
+      - www.elastiflow.com/logstash/**
+      - .github/workflows/logstash-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/elastiflow-logstash
+  VERSION: 9.2.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set build date
+        run: echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: www.elastiflow.com
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+          # パッケージをこのリポジトリに紐付ける (Dockerfile の LABEL を上書き)
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
