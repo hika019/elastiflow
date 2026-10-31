@@ -19,10 +19,6 @@
           "set_priority": {
             "priority": 50
           },
-          "shrink": {
-            "number_of_shards": 1,
-            "allow_write_after_shrink": false
-          },
           "migrate": {
             "enabled": false
           }
